@@ -5,7 +5,7 @@ const path = require('path');
 const cheerio = require('cheerio');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Servir les fichiers statiques du dossier public
 app.use(express.static('public'));

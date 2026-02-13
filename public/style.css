@@ -383,6 +383,172 @@ h1 {
     }
 }
 
+/* Player Header */
+#player-header {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+#player-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 20px;
+    border-radius: 12px;
+    backdrop-filter: blur(5px);
+    width: 100%;
+    max-width: 400px;
+}
+
+#player-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fdcb6e;
+    text-shadow: 0 0 5px rgba(253, 203, 110, 0.5);
+    margin-bottom: 5px;
+}
+
+.xp-container {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    height: 15px;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 5px;
+}
+
+#xp-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #0984e3, #74b9ff);
+    width: 0%;
+    transition: width 0.5s ease;
+}
+
+#xp-text {
+    font-size: 0.8rem;
+    color: white;
+    text-align: center;
+    width: 100%;
+    display: block;
+    margin-top: 2px;
+}
+
+#player-level {
+    font-size: 0.9rem;
+    color: #dfe6e9;
+}
+
+/* Dashboard & Modal */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.stat-val {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #b2bec3;
+}
+
+#guess-distribution {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 10px;
+    align-items: flex-start;
+}
+
+.dist-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 10px;
+}
+
+.dist-label {
+    width: 20px;
+    text-align: right;
+    font-weight: bold;
+}
+
+.dist-bar-container {
+    flex-grow: 1;
+    background: rgba(255, 255, 255, 0.1);
+    height: 20px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.dist-bar {
+    height: 100%;
+    background: #00b894;
+    text-align: right;
+    font-size: 0.8rem;
+    padding-right: 5px;
+    color: #2d3436;
+    font-weight: bold;
+    min-width: 0;
+    transition: width 0.8s ease-out;
+}
+
+/* Activity Graph */
+#activity-graph {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 100px;
+    margin-top: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.activity-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 12%;
+}
+
+.activity-bar {
+    width: 100%;
+    background: #0984e3;
+    border-radius: 4px 4px 0 0;
+    min-height: 2px;
+    transition: height 0.5s ease;
+    margin-bottom: 5px;
+}
+
+.activity-date {
+    font-size: 0.7rem;
+    color: #b2bec3;
+}
+
+.activity-count {
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
 /* Responsive tweaks for long words and small screens */
 @media (max-width: 600px) {
     .container {
@@ -394,6 +560,20 @@ h1 {
     h1 {
         font-size: 1.8rem;
         margin-bottom: 10px;
+    }
+
+    /* Stack stats on mobile */
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .stat-val {
+        font-size: 1.2rem;
+    }
+
+    .stat-label {
+        font-size: 0.7rem;
     }
 
     #game-board {
@@ -419,6 +599,7 @@ h1 {
     }
 }
 
+
 /* Very small screens */
 @media (max-width: 380px) {
     .tile {
@@ -427,5 +608,52 @@ h1 {
 
     #game-board.long-word .tile {
         font-size: 1rem;
+    }
+}
+
+/* Desktop Side-by-Side Layout */
+@media (min-width: 1024px) {
+    body {
+        gap: 40px;
+        /* Espace entre le jeu et les stats */
+    }
+
+    .modal {
+        position: static;
+        /* Plus d'overlay */
+        width: auto;
+        height: auto;
+        background-color: transparent;
+        /* Pas de fond sombre */
+        backdrop-filter: none;
+        pointer-events: auto;
+        transform: none;
+        z-index: 1;
+    }
+
+    .modal-content {
+        animation: none;
+        /* Pas d'animation de slide pour éviter les bugs visuels au resize */
+        width: 380px;
+        /* Fixe la largeur */
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--glass-border);
+    }
+
+    /* Animation d'apparition différente pour desktop */
+    .modal:not(.hidden) .modal-content {
+        animation: fadeInRight 0.5s ease-out;
+    }
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
     }
 }

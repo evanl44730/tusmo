@@ -18,11 +18,235 @@ let isGameOver = false;
 let knownHints = []; // Array of confirmed letters placed correctly
 let currentWord = ""; // Store current word for definition
 
-// Stats
+// Stats & XP
 let stats = {
+    // Legacy mapping or new structure
     streak: 0,
-    maxStreak: 0
+    maxStreak: 0,
+    // New fields
+    totalXP: 0,
+    level: 1,
+    gamesPlayed: 0,
+    gamesWon: 0,
+    guessDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
+    dailyWins: {}, // New field: "YYYY-MM-DD": count
+    titles: ["Novice des Lettres"],
+    currentTitleIndex: 0
 };
+
+// ... XP functions ...
+
+function getFormattedDate() {
+    const d = new Date();
+    return d.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+function getLast7Days() {
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        days.push(d.toISOString().split('T')[0]);
+    }
+    return days;
+}
+
+// XP curve: Level L requires 500 * L XP (cumulative? or per level?)
+// Spec: L1=500, L2=1000, L10=5000. Looks linear per level or cumulative?
+// "Niveau 1 = 500 XP" -> To reach Level 2?
+// Let's assume simpler: Threshold for Level N = 500 * N * (exponent? "Exponentielle douce")
+// Let's use: XP req for Next Level = 500 * (1.1 ^ (Level - 1))
+function getXPForNextLevel(level) {
+    return Math.floor(500 * Math.pow(1.1, level - 1));
+}
+
+function getTitleForLevel(level) {
+    if (level >= 50) return "Dieu du Tusmo";
+    if (level >= 30) return "Lexicologue Fou";
+    if (level >= 20) return "Maître du Dico";
+    if (level >= 10) return "Expert des Mots";
+    if (level >= 5) return "Apprenti Scribe";
+    return "Novice des Lettres";
+}
+
+function loadStats() {
+    const saved = localStorage.getItem('tusmo_stats_v2');
+    if (saved) {
+        stats = JSON.parse(saved);
+        // Migration if needed
+        if (!stats.guessDistribution) stats.guessDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+        if (!stats.dailyWins) stats.dailyWins = {};
+    } else {
+        // Try legacy
+        const legacy = localStorage.getItem('tusmo_stats');
+        if (legacy) {
+            const old = JSON.parse(legacy);
+            stats.streak = old.streak || 0;
+            stats.maxStreak = old.maxStreak || 0;
+        }
+    }
+    updateHeaderUI();
+}
+
+function saveStats() {
+    localStorage.setItem('tusmo_stats_v2', JSON.stringify(stats));
+}
+
+function updateStats(won, guessesCount) {
+    stats.gamesPlayed++;
+
+    let xpGain = 0;
+
+    if (won) {
+        stats.gamesWon++;
+        stats.streak++;
+        if (stats.streak > stats.maxStreak) stats.maxStreak = stats.streak;
+
+        // Distribution
+        if (stats.guessDistribution[guessesCount]) {
+            stats.guessDistribution[guessesCount]++;
+        } else {
+            stats.guessDistribution[guessesCount] = 1;
+        }
+
+        // XP Calc
+        // Base: 100
+        xpGain += 100;
+        // Speed: 10 * queries remaining (maxGuesses - guessesCount) ? 
+        // Spec: "3 essais sur 6 = 3 essais restants" => (6 - 3) = 3 ?
+        // Usually "Found in 3 tries" means you used 3. Remaining = 6 - 3 = 3?
+        // Let's say: (maxGuesses - guessesCount) * 10.
+        // If found in 1: (6-1)*10 = 50 XP bonus? Or (6+1 - 1)?
+        // If found in 6: (6-6)*10 = 0 XP bonus.
+        const speedBonus = (maxGuesses - guessesCount) * 10;
+        xpGain += Math.max(0, speedBonus);
+
+        // Streak Bonus: 5 * Streak
+        xpGain += 5 * stats.streak;
+
+        // Daily Wins
+        const today = getFormattedDate();
+        if (!stats.dailyWins[today]) stats.dailyWins[today] = 0;
+        stats.dailyWins[today]++;
+
+    } else {
+        stats.streak = 0;
+        // Malus/Consolation
+        xpGain += 10;
+    }
+
+    // Add XP
+    let oldLevel = stats.level;
+    stats.totalXP += xpGain;
+
+
+
+    if (stats.currentXP === undefined) stats.currentXP = 0; // Migration
+
+    stats.currentXP += xpGain;
+    let leveledUp = false;
+
+    let nextLevelReq = getXPForNextLevel(stats.level);
+    while (stats.currentXP >= nextLevelReq) {
+        stats.currentXP -= nextLevelReq;
+        stats.level++;
+        leveledUp = true;
+        nextLevelReq = getXPForNextLevel(stats.level);
+    }
+
+    saveStats();
+    updateHeaderUI();
+
+    return { xpGain, leveledUp };
+}
+
+function updateHeaderUI() {
+    const title = getTitleForLevel(stats.level);
+    document.getElementById('player-title').textContent = title;
+    document.getElementById('player-level').textContent = `Niveau ${stats.level}`;
+
+    const req = getXPForNextLevel(stats.level);
+    const pct = Math.min(100, (stats.currentXP / req) * 100);
+
+    document.getElementById('xp-bar').style.width = `${pct}%`;
+    document.getElementById('xp-text').textContent = `${Math.floor(stats.currentXP)} / ${req} XP`;
+}
+
+function updateDashboard() {
+    document.getElementById('stat-played').textContent = stats.gamesPlayed;
+    const winRate = stats.gamesPlayed > 0 ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : 0;
+    document.getElementById('stat-winrate').textContent = `${winRate}%`;
+    document.getElementById('stat-streak').textContent = stats.streak;
+    document.getElementById('stat-maxstreak').textContent = stats.maxStreak;
+
+    // Distribution
+    const distContainer = document.getElementById('guess-distribution');
+    distContainer.innerHTML = '';
+
+    // Find max frequency for scaling
+    let maxFreq = 0;
+    for (let i = 1; i <= maxGuesses; i++) {
+        if (stats.guessDistribution[i] > maxFreq) maxFreq = stats.guessDistribution[i];
+    }
+
+    for (let i = 1; i <= maxGuesses; i++) {
+        const count = stats.guessDistribution[i] || 0;
+        const nounours = maxFreq > 0 ? (count / maxFreq) * 100 : 0; // Percentage of MAX
+
+        const row = document.createElement('div');
+        row.classList.add('dist-row');
+
+        row.innerHTML = `
+            <span class="dist-label">${i}</span>
+            <div class="dist-bar-container">
+                <div class="dist-bar" style="width: ${Math.max(nounours, 5)}%">${count}</div>
+            </div>
+        `;
+        distContainer.appendChild(row);
+    }
+
+    // Activity Graph
+    const activityContainer = document.getElementById('activity-graph');
+    activityContainer.innerHTML = '';
+
+    const last7Days = getLast7Days();
+    // Find max for scaling
+    let maxDaily = 0;
+    last7Days.forEach(day => {
+        if (stats.dailyWins[day] > maxDaily) maxDaily = stats.dailyWins[day];
+    });
+
+    last7Days.forEach(day => {
+        const count = stats.dailyWins[day] || 0;
+        // If maxDaily is 0, we avoid division by zero
+        // Min height for visibility? No, if 0 it's 0.
+        // But let's add min-height in CSS for nice look if 0? CSS has min-height 2px.
+        const heightPct = maxDaily > 0 ? (count / maxDaily) * 100 : 0;
+
+        // Format date to show Day/Month or just Day Name (e.g. "Lun", "13/02")
+        // Simple: DD/MM
+        const dateObj = new Date(day);
+        const dayLabel = `${dateObj.getDate()}/${dateObj.getMonth() + 1}`;
+
+        const col = document.createElement('div');
+        col.classList.add('activity-day');
+        col.innerHTML = `
+            <span class="activity-count">${count > 0 ? count : ''}</span>
+            <div class="activity-bar" style="height: ${Math.max(heightPct, 5)}%; opacity: ${count > 0 ? 1 : 0.3}"></div>
+            <span class="activity-date">${dayLabel}</span>
+        `;
+        activityContainer.appendChild(col);
+    });
+}
+
+function showModal(title, msg) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-message').textContent = msg;
+
+    updateDashboard();
+
+    document.getElementById('game-modal').classList.remove('hidden');
+}
 
 const azertyKeys = [
     ['A', 'Z', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -30,28 +254,6 @@ const azertyKeys = [
     ['Enter', 'W', 'X', 'C', 'V', 'B', 'N', 'Backspace']
 ];
 
-function loadStats() {
-    const saved = localStorage.getItem('tusmo_stats');
-    if (saved) {
-        stats = JSON.parse(saved);
-    }
-}
-
-function saveStats() {
-    localStorage.setItem('tusmo_stats', JSON.stringify(stats));
-}
-
-function updateStats(won) {
-    if (won) {
-        stats.streak++;
-        if (stats.streak > stats.maxStreak) {
-            stats.maxStreak = stats.streak;
-        }
-    } else {
-        stats.streak = 0;
-    }
-    saveStats();
-}
 
 function initKeyboard() {
     keyboard.innerHTML = '';
@@ -239,16 +441,20 @@ async function submitGuess() {
         setTimeout(async () => {
             if (data.won) {
                 if (typeof startConfetti === 'function') startConfetti();
-                updateStats(true);
-                showModal("Félicitations !", "Vous avez trouvé le mot !");
+
+                // Pass currentRow + 1 as guess count (1-based)
+                const { xpGain, leveledUp } = updateStats(true, currentRow + 1);
+
+                let msg = `Vous avez trouvé le mot ! (+${xpGain} XP)`;
+                if (leveledUp) msg += "\nNIVEAU SUPÉRIEUR !";
+
+                showModal("Félicitations !", msg);
                 isGameOver = true;
             } else if (currentRow === maxGuesses - 1) {
-                updateStats(false);
-                // On Server logic: if lost, we don't know the word. 
-                // Let's cheat and define the last guess? No.
-                // ideally server should return correctWord. 
-                // Let's just show "Perdu".
-                showModal("Perdu !", `Le mot était caché.`);
+                // Loss
+                const { xpGain } = updateStats(false, 0);
+
+                showModal("Perdu !", `Le mot était caché. (+${xpGain} XP consolation)`);
                 isGameOver = true;
             } else {
                 currentRow++;
@@ -291,16 +497,7 @@ function showMessage(msg) {
     setTimeout(() => { messageElement.textContent = ''; }, 2000);
 }
 
-function showModal(title, msg) {
-    modalTitle.textContent = title;
-    modalMessage.textContent = msg;
 
-    currentStreakSpan.textContent = stats.streak;
-    maxStreakSpan.textContent = stats.maxStreak;
-    statsContainer.classList.remove('hidden');
-
-    modal.classList.remove('hidden');
-}
 
 replayBtn.addEventListener('click', () => {
     resetGame();
