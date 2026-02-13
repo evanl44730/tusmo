@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tusmo Clone</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>TUSMO</h1>
+        <div id="game-board"></div>
+        <div id="keyboard"></div>
+        <div id="message"></div>
+    </div>
+
+    <!-- Modal Fin de Partie -->
+    <div id="game-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="modal-title"></h2>
+            <p id="modal-message"></p>
+            <div id="stats-container" class="hidden">
+                <p>Série actuelle : <span id="current-streak">0</span></p>
+                <p>Max Série : <span id="max-streak">0</span></p>
+            </div>
+            <button id="replay-btn">Rejouer</button>
+        </div>
+    </div>
+    <script src="confetti.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
